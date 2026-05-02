@@ -2,8 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Bạn có thể để lại CSS cho font-mono hoặc background ở đây sau */
-body {
-  background-color: #0d1117;
-  color: white;
+/* THÊM ĐOẠN NÀY VÀO */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh; /* dvh: Dynamic Viewport Height - Sửa lỗi thanh địa chỉ của mobile */
+  overflow: hidden; /* Cấm thanh cuộn */
+  overscroll-behavior: none; /* Cấm thao tác vuốt tải lại trang (Pull-to-refresh) */
+  touch-action: none; /* Cấm mọi thao tác zoom/vuốt của trình duyệt */
+  background-color: #050010;
 }

@@ -13,46 +13,46 @@ class AudioManager {
   private currentSequenceAudio: HTMLAudioElement | null = null;
 
   constructor() {
-    this.jumpSnd = new Audio('/sounds/freesound_community-flappy_whoosh-43099.mp3');
+    this.jumpSnd = new Audio('./sounds/freesound_community-flappy_whoosh-43099.mp3');
     this.jumpSnd.volume = 0.5;
 
-    this.crashSnd = new Audio('/sounds/do-ngu-do-an-hai.mp3');
+    this.crashSnd = new Audio('./sounds/do-ngu-do-an-hai.mp3');
     this.crashSnd.volume = 0.8;
 
     this.randomScoreSounds = [
-      new Audio('/sounds/fahhhhh.mp3'),
-      new Audio('/sounds/fahhhhh_zaX5nvm.mp3')
+      new Audio('./sounds/fahhhhh.mp3'),
+      new Audio('./sounds/fahhhhh_zaX5nvm.mp3')
     ];
     this.randomScoreSounds.forEach(snd => snd.volume = 0.6);
 
     // 1. Nhạc Menu chờ
-    this.menuBgm = new Audio('/sounds/nhac-xo-so.mp3');
+    this.menuBgm = new Audio('./sounds/nhac-xo-so.mp3');
     this.menuBgm.loop = true; // Lặp lại liên tục
     this.menuBgm.volume = 0.4;
 
     // 2. Nhạc mốc 10 điểm
-    this.rainbowFirst = new Audio('/sounds/mo-dun-thooc-kinh-do.mp3');
+    this.rainbowFirst = new Audio('./sounds/mo-dun-thooc-kinh-do.mp3');
     this.rainbowFirst.volume = 0.7;
 
     // 3. Playlist nhạc chạy đuổi nhau mỗi 10s
     this.rainbowPlaylist = [
-      new Audio('/sounds/trinh-la-gi.mp3'),
-      new Audio('/sounds/tap-trung-vao-su-nghiep.mp3'),
-      new Audio('/sounds/hachimi-chimici-mambo.mp3'),
-      new Audio('/sounds/outro-song_oqu8zAg.mp3'),
-      new Audio('/sounds/tam-trang.mp3'),
-      new Audio('/sounds/loi-toi_TnbhdTR.mp3'),
-      new Audio('/sounds/banh-bao-banh-bao-day.mp3'),
-      new Audio('/sounds/Am_thanh_meme_con_may_thich_kieu_gi_may_nhay_vao_may_an_tao_di_tiktok-www_tiengdong_com.mp3'),
-      new Audio('/sounds/low-cortisol-song.mp3'),
-      new Audio('/sounds/dreamcore.mp3'),
-      new Audio('/sounds/tu-tu-tu-du-max-verstappen.mp3'),
-      new Audio('/sounds/Johnny-Dak.mp3'),
-      new Audio('/sounds/Anh-yeu-em-nhieu-VL.mp3'),
-      new Audio('/sounds/Anh-em-bi-chem.-Tao-bo-chay.mp3'),
-      new Audio('/sounds/outro-song_oqu8zAg.mp3'),
-      new Audio('/sounds/Day-no-phai-the-chu-li-thang-nay-kha-va-gioi.mp3'),
-      new Audio('/sounds/Vu-nao-Banh-ma.mp3')
+      new Audio('./sounds/trinh-la-gi.mp3'),
+      new Audio('./sounds/tap-trung-vao-su-nghiep.mp3'),
+      new Audio('./sounds/hachimi-chimici-mambo.mp3'),
+      new Audio('./sounds/outro-song_oqu8zAg.mp3'),
+      new Audio('./sounds/tam-trang.mp3'),
+      new Audio('./sounds/loi-toi_TnbhdTR.mp3'),
+      new Audio('./sounds/banh-bao-banh-bao-day.mp3'),
+      new Audio('./sounds/Am_thanh_meme_con_may_thich_kieu_gi_may_nhay_vao_may_an_tao_di_tiktok-www_tiengdong_com.mp3'),
+      new Audio('./sounds/low-cortisol-song.mp3'),
+      new Audio('./sounds/dreamcore.mp3'),
+      new Audio('./sounds/tu-tu-tu-du-max-verstappen.mp3'),
+      new Audio('./sounds/Johnny-Dak.mp3'),
+      new Audio('./sounds/Anh-yeu-em-nhieu-VL.mp3'),
+      new Audio('./sounds/Anh-em-bi-chem.-Tao-bo-chay.mp3'),
+      new Audio('./sounds/outro-song_oqu8zAg.mp3'),
+      new Audio('./sounds/Day-no-phai-the-chu-li-thang-nay-kha-va-gioi.mp3'),
+      new Audio('./sounds/Vu-nao-Banh-ma.mp3')
     ];
     this.rainbowPlaylist.forEach(snd => snd.volume = 0.7);
   }

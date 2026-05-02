@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Trophy, Play, RotateCcw, Home, Skull, AlertTriangle, WifiOff, Terminal } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback, memo } from 'react';
+import { Trophy, Play, RotateCcw, Home, AlertTriangle, WifiOff, Terminal } from 'lucide-react';
 
 // --- TYPES ---
 export type GameState = 'START' | 'PLAYING' | 'GAMEOVER';
@@ -17,6 +17,7 @@ export interface Pipe {
   moveType: 'none' | 'sine';
   baseY: number;
   angle: number;
+  active: boolean; 
 }
 
 export interface FloatingText {
@@ -25,9 +26,12 @@ export interface FloatingText {
   y: number;
   life: number;
   color: string;
+  active: boolean;
 }
 
 // --- CONSTANTS ---
+const TWO_PI = Math.PI * 2;
+
 export const GAME_CONFIG = {
   GRAVITY: 0.25,
   JUMP_STRENGTH: -4.8,
@@ -39,7 +43,6 @@ export const GAME_CONFIG = {
   BIRD_SIZE: 34,
   LOGICAL_WIDTH: 400,
   LOGICAL_HEIGHT: 500,
-  DPI_SCALE: 2,
 };
 
 export const EMOJIS = [
@@ -48,35 +51,23 @@ export const EMOJIS = [
 ];
 
 export const ROASTS = [
-  "Skill issue. Đập máy đi 🤡",
-  "Chơi bằng ngón chân à? 👣",
-  "Mù mắt quá, xóa game dùm 😭",
-  "Thế cũng chết được, ảo thật đấy 💀",
-  "Nghỉ game đi, tốn điện 🔌",
-  "Trình này đòi hack NASA? 💻",
-  "Hết cứu... 🚑",
-  "Bà hàng xóm còn chơi giỏi hơn m! 👵",
-  "Nhìn m chơi t đau mắt quá 🫣",
-  "10 điểm môn Thể dục 🏃‍♂️",
-  "Mới mua acc à bro? 💳",
-  "Bảo gà lại tự ái 🐔"
+  "Skill issue. Đập máy đi 🤡", "Chơi bằng ngón chân à? 👣", "Mù mắt quá, xóa game dùm 😭",
+  "Thế cũng chết được, ảo thật đấy 💀", "Nghỉ game đi, tốn điện 🔌", "Trình này đòi hack NASA? 💻",
+  "Hết cứu... 🚑", "Bà hàng xóm còn chơi giỏi hơn m! 👵", "Nhìn m chơi t đau mắt quá 🫣",
+  "10 điểm môn Thể dục 🏃‍♂️", "Mới mua acc à bro? 💳", "Bảo gà lại tự ái 🐔"
 ];
 
 export const MEME_POPUPS = [
   "Skill gap 📈", "R U Surfm💯", "That’s heat 🔥", "TÀY 🐧", 
   "Hackerman 💻", "Drip maxed 🗿", "EZ Game 🥱", "LỎ 🤡",
-  "Ao chình 🌊", "Thưởng khô gà 🏐", "Cháy phố 🔥", "Được của ló 🗑️"
+  "Ao chình 🌊", "Thưởng khô gà 🐔", "Fire 🔥", "Được của ló 🗑️"
 ];
 
 export const FAKE_ADS = [
-  "⚠️ Chúc mừng bạn trúng iPhone 15 Pro Max! Bấm nhận!!!",
-  "Lõi quá bro, nạp 50k để qua màn? 💳",
-  "Bà Tân Vlog: Bí quyết siêu to khổng lồ 🍲",
-  "Thuốc trị hói đầu gia truyền 3 đời 💊",
-  "Xóa nợ xấu FE Credit - KHÔNG CẦN TRẢ GỐC 💸",
-  "Tải thêm RAM 128GB miễn phí tại đây! 💾",
-  "Em gái gần nhà đang tìm sugar daddy 💋",
-  "Click ngay để xem clip bị rò rỉ 🤫"
+  "⚠️ Chúc mừng bạn trúng iPhone 15 Pro Max! Bấm nhận!!!", "Lõi quá bro, nạp 50k để qua màn? 💳",
+  "Bà Tân Vlog: Bí quyết siêu to khổng lồ 🍲", "Thuốc trị hói đầu gia truyền 3 đời 💊",
+  "Xóa nợ xấu FE Credit - KHÔNG CẦN TRẢ GỐC 💸", "Tải thêm RAM 128GB miễn phí tại đây! 💾",
+  "Em gái gần nhà đang tìm sugar daddy 💋", "Click ngay để xem clip bị rò rỉ 🤫"
 ];
 
 const MEME_WORDS = [
@@ -85,74 +76,94 @@ const MEME_WORDS = [
   "Background xịn nhất 2026."
 ];
 
-// --- AUDIO MANAGER ---
+// --- ULTRA OPTIMIZED AUDIO MANAGER ---
 class AudioManager {
-  private jumpSnd: HTMLAudioElement;
+  private jumpPool: HTMLAudioElement[] = [];
+  private jumpPoolIndex: number = 0;
+  
+  private scorePool: HTMLAudioElement[] = [];
+  private scorePoolIndex: number = 0;
+
   private crashSnd: HTMLAudioElement;
-  private randomScoreSounds: HTMLAudioElement[];
   private menuBgm: HTMLAudioElement;
   private rainbowFirst: HTMLAudioElement;
   private rainbowPlaylist: HTMLAudioElement[];
   private currentSequenceAudio: HTMLAudioElement | null = null;
+  private unlocked: boolean = false;
 
   constructor() {
-    this.jumpSnd = new Audio('/sounds/freesound_community-flappy_whoosh-43099.mp3');
-    this.jumpSnd.volume = 0.5;
-    this.crashSnd = new Audio('/sounds/do-ngu-do-an-hai.mp3');
+    for (let i = 0; i < 5; i++) {
+      const snd = new Audio('./sounds/freesound_community-flappy_whoosh-43099.mp3');
+      snd.volume = 0.5;
+      this.jumpPool.push(snd);
+    }
+
+    const scoreSoundSrcs = ['./sounds/fahhhhh.mp3', './sounds/fahhhhh_zaX5nvm.mp3'];
+    for (let i = 0; i < 4; i++) {
+      const snd = new Audio(scoreSoundSrcs[i % 2]);
+      snd.volume = 0.6;
+      this.scorePool.push(snd);
+    }
+
+    this.crashSnd = new Audio('./sounds/do-ngu-do-an-hai.mp3');
     this.crashSnd.volume = 0.8;
-    this.randomScoreSounds = [
-      new Audio('/sounds/fahhhhh.mp3'),
-      new Audio('/sounds/fahhhhh_zaX5nvm.mp3')
-    ];
-    this.randomScoreSounds.forEach(snd => snd.volume = 0.6);
-    this.menuBgm = new Audio('/sounds/nhac-xo-so.mp3');
+    
+    this.menuBgm = new Audio('./sounds/nhac-xo-so.mp3');
     this.menuBgm.loop = true; 
     this.menuBgm.volume = 0.4;
-    this.rainbowFirst = new Audio('/sounds/mo-dun-thooc-kinh-do.mp3');
+    
+    this.rainbowFirst = new Audio('./sounds/mo-dun-thooc-kinh-do.mp3');
     this.rainbowFirst.volume = 0.7;
 
     this.rainbowPlaylist = [
-      new Audio('/sounds/trinh-la-gi.mp3'),
-      new Audio('/sounds/tap-trung-vao-su-nghiep.mp3'),
-      new Audio('/sounds/hachimi-chimici-mambo.mp3'),
-      new Audio('/sounds/outro-song_oqu8zAg.mp3'),
-      new Audio('/sounds/tam-trang.mp3'),
-      new Audio('/sounds/loi-toi_TnbhdTR.mp3'),
-      new Audio('/sounds/banh-bao-banh-bao-day.mp3'),
-      new Audio('/sounds/Am_thanh_meme_con_may_thich_kieu_gi_may_nhay_vao_may_an_tao_di_tiktok-www_tiengdong_com.mp3'),
-      new Audio('/sounds/low-cortisol-song.mp3'),
-      new Audio('/sounds/dreamcore.mp3'),
-      new Audio('/sounds/tu-tu-tu-du-max-verstappen.mp3'),
-      new Audio('/sounds/Johnny-Dak.mp3'),
-      new Audio('/sounds/Anh-yeu-em-nhieu-VL.mp3'),
-      new Audio('/sounds/Anh-em-bi-chem.-Tao-bo-chay.mp3'),
-      new Audio('/sounds/outro-song_oqu8zAg.mp3'),
-      new Audio('/sounds/Day-no-phai-the-chu-li-thang-nay-kha-va-gioi.mp3'),
-      new Audio('/sounds/Vu-nao-Banh-ma.mp3')
-    ];
-    this.rainbowPlaylist.forEach(snd => snd.volume = 0.7);
+      './sounds/trinh-la-gi.mp3', './sounds/tap-trung-vao-su-nghiep.mp3', './sounds/hachimi-chimici-mambo.mp3',
+      './sounds/outro-song_oqu8zAg.mp3', './sounds/tam-trang.mp3', './sounds/loi-toi_TnbhdTR.mp3',
+      './sounds/banh-bao-banh-bao-day.mp3', './sounds/Am_thanh_meme_con_may_thich_kieu_gi_may_nhay_vao_may_an_tao_di_tiktok-www_tiengdong_com.mp3',
+      './sounds/low-cortisol-song.mp3', './sounds/dreamcore.mp3', './sounds/tu-tu-tu-du-max-verstappen.mp3',
+      './sounds/Johnny-Dak.mp3', './sounds/Anh-yeu-em-nhieu-VL.mp3', './sounds/Anh-em-bi-chem.-Tao-bo-chay.mp3',
+      './sounds/outro-song_oqu8zAg.mp3', './sounds/Day-no-phai-the-chu-li-thang-nay-kha-va-gioi.mp3', './sounds/Vu-nao-Banh-ma.mp3'
+    ].map(src => {
+      const audio = new Audio(src);
+      audio.volume = 0.7;
+      return audio;
+    });
+  }
+
+  unlock() {
+    if (this.unlocked) return;
+    this.unlocked = true;
+    this.jumpPool.forEach(a => a.load());
+    this.scorePool.forEach(a => a.load());
+    this.crashSnd.load();
+    this.rainbowFirst.load();
+    this.rainbowPlaylist.forEach(a => a.load());
   }
 
   playMenuMusic() { this.menuBgm.play().catch(() => {}); }
   stopMenuMusic() { this.menuBgm.pause(); this.menuBgm.currentTime = 0; }
-  playJump() { const clone = this.jumpSnd.cloneNode() as HTMLAudioElement; clone.volume = this.jumpSnd.volume; clone.play().catch(() => {}); }
-  playCrash() { this.crashSnd.currentTime = 0; this.crashSnd.play().catch(() => {}); }
-  playScoreSound() {
-    const randomIndex = Math.floor(Math.random() * this.randomScoreSounds.length);
-    const selectedSound = this.randomScoreSounds[randomIndex];
-    const clone = selectedSound.cloneNode() as HTMLAudioElement;
-    clone.volume = selectedSound.volume;
-    clone.play().catch(() => {});
+  
+  playJump() { 
+    const snd = this.jumpPool[this.jumpPoolIndex];
+    snd.currentTime = 0;
+    snd.play().catch(() => {});
+    this.jumpPoolIndex = (this.jumpPoolIndex + 1) % this.jumpPool.length;
   }
   
-  // HỆ THỐNG XỬ LÝ ÂM THANH MỚI: Tự động chuyển bài chuẩn xác theo điểm số
+  playCrash() { this.crashSnd.currentTime = 0; this.crashSnd.play().catch(() => {}); }
+  
+  playScoreSound() {
+    const snd = this.scorePool[this.scorePoolIndex];
+    snd.currentTime = 0;
+    snd.play().catch(() => {});
+    this.scorePoolIndex = (this.scorePoolIndex + 1) % this.scorePool.length;
+  }
+  
   playMusicForScore(score: number) {
     if (score < 10) {
       this.playScoreSound();
     } else if (score === 10) {
       this.startRainbowSequence();
     } else if (score % 10 === 0 && score > 10) {
-      // Ví dụ: Điểm 20 -> trackIndex = 0; Điểm 30 -> trackIndex = 1
       const trackIndex = Math.floor(score / 10) - 2;
       this.playNextInPlaylist(trackIndex);
     }
@@ -163,10 +174,7 @@ class AudioManager {
     this.rainbowFirst.currentTime = 0;
     this.rainbowFirst.play().catch(() => {});
     this.currentSequenceAudio = this.rainbowFirst;
-
-    this.rainbowFirst.onended = () => {
-      this.playNextInPlaylist(0);
-    };
+    this.rainbowFirst.onended = () => this.playNextInPlaylist(0);
   }
 
   private playNextInPlaylist(index: number) {
@@ -174,7 +182,6 @@ class AudioManager {
       this.currentSequenceAudio.onended = null;
       this.currentSequenceAudio.pause();
     }
-    // Dừng luôn bài First track nếu người chơi hack điểm nhảy thẳng qua mốc 10
     this.rainbowFirst.onended = null;
     this.rainbowFirst.pause();
 
@@ -184,10 +191,7 @@ class AudioManager {
     nextAudio.currentTime = 0;
     nextAudio.play().catch(() => {});
     this.currentSequenceAudio = nextAudio;
-
-    nextAudio.onended = () => {
-      this.playNextInPlaylist(safeIndex + 1);
-    };
+    nextAudio.onended = () => this.playNextInPlaylist(safeIndex + 1);
   }
 
   stopSequence() {
@@ -202,12 +206,12 @@ class AudioManager {
 }
 const audio = new AudioManager();
 
-// --- COMPONENTS ---
-const HUD: React.FC<{ score: number; highScore: number }> = ({ score, highScore }) => (
+// --- REACT COMPONENTS (Wrapped in memo with safe TS Props) ---
+const HUD = memo(({ score, highScore }: { score: number; highScore: number }) => (
   <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-start z-20 pointer-events-none" style={{ fontFamily: '"Comic Sans MS", cursive, sans-serif' }}>
     <div className="flex flex-col gap-1">
       <div className="bg-[#ff00ff] border-[3px] border-[#00ffff] text-yellow-300 font-black text-2xl px-4 py-1 shadow-[4px_4px_0_#000] rotate-[-2deg] animate-pulse">
-        ĐIỂM RÁC: {score}
+        ĐIỂM : {score}
       </div>
       <div className="bg-black/90 text-[#00ff00] text-[10px] font-mono px-2 py-1 flex items-center gap-1 border border-[#00ff00] w-max">
         <WifiOff size={10} className="animate-ping text-red-500"/> Ping: 999ms
@@ -226,9 +230,9 @@ const HUD: React.FC<{ score: number; highScore: number }> = ({ score, highScore 
       </div>
     </div>
   </div>
-);
+));
 
-const StartScreen: React.FC<{ selectedEmoji: string; setSelectedEmoji: (e: string) => void; onStart: () => void }> = ({ selectedEmoji, setSelectedEmoji, onStart }) => {
+const StartScreen = memo(({ selectedEmoji, setSelectedEmoji, onStart }: { selectedEmoji: string; setSelectedEmoji: (e: string) => void; onStart: () => void }) => {
   const [showSelector, setShowSelector] = useState(false);
   return (
     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center py-6 overflow-hidden bg-[#000033]">
@@ -270,11 +274,18 @@ const StartScreen: React.FC<{ selectedEmoji: string; setSelectedEmoji: (e: strin
         >
           <Play size={28} fill="currentColor" /> HUPS
         </button>
+
         <button 
           onClick={(e) => { e.stopPropagation(); setShowSelector(true); }}
           className="w-full py-3 bg-[#00ff00] hover:bg-[#33ff33] text-black border-4 border-black text-md font-black uppercase tracking-widest shadow-[6px_6px_0_#000] active:scale-95 transition-transform"
         >
           CHỌN AVT
+        </button>
+        <button 
+          onClick={(e) => { e.stopPropagation(); window.close(); }}
+          className="w-full py-3 bg-red-600 hover:bg-red-500 text-white border-4 border-white text-md font-black uppercase tracking-widest shadow-[6px_6px_0_#000] active:scale-95 transition-transform"
+        >
+          ❌ THOÁT GAME (ESC)
         </button>
       </div>
 
@@ -306,9 +317,9 @@ const StartScreen: React.FC<{ selectedEmoji: string; setSelectedEmoji: (e: strin
       `}</style>
     </div>
   );
-};
+});
 
-const GameOverScreen: React.FC<{ score: number; highScore: number; roastMsg: string; onRetry: () => void; onMenu: () => void }> = ({ score, highScore, roastMsg, onRetry, onMenu }) => (
+const GameOverScreen = memo(({ score, highScore, roastMsg, onRetry, onMenu }: { score: number; highScore: number; roastMsg: string; onRetry: () => void; onMenu: () => void }) => (
   <div className="absolute inset-0 z-30 bg-[#0000aa] flex flex-col items-center justify-center p-6 text-center text-white" style={{ fontFamily: '"Comic Sans MS", cursive, sans-serif' }}>
     <div className="relative z-10 flex flex-col items-center w-full max-w-[340px]">
       <div className="bg-white text-[#0000aa] px-2 py-1 font-bold text-sm mb-6 self-start tracking-widest">CYBER_LO.EXE</div>
@@ -341,46 +352,88 @@ const GameOverScreen: React.FC<{ score: number; highScore: number; roastMsg: str
         <button onClick={(e) => { e.stopPropagation(); onMenu(); }} className="w-full py-3 bg-[#c0c0c0] text-black font-bold text-sm uppercase flex items-center justify-center gap-2 border-[4px] border-t-white border-l-white border-b-black border-r-black hover:bg-[#a0a0a0] active:border-t-black active:border-l-black active:border-b-white active:border-r-white">
           <Home size={16} /> CÚT VỀ MENU
         </button>
+        <button onClick={(e) => { e.stopPropagation(); window.close(); }} className="w-full py-3 bg-red-800 text-white font-bold text-sm uppercase flex items-center justify-center gap-2 border-[4px] border-t-red-400 border-l-red-400 border-b-black border-r-black hover:bg-red-700 active:border-t-black active:border-l-black active:border-b-red-400 active:border-r-red-400">
+          ❌ ĐẬP MÁY NGHỈ CHƠI
+        </button>
       </div>
     </div>
   </div>
-);
+));
 
 // --- HOOK: useGameEngine ---
 const useGameEngine = ({
   canvasRef, gameState, setGameState, setScore, setHighScore, setRoastMsg, triggerShake, selectedEmoji
 }: any) => {
   const birdRef = useRef<Bird>({ y: 250, velocity: 0, rotation: 0 });
-  const pipesRef = useRef<Pipe[]>([]);
-  const floatingTextsRef = useRef<FloatingText[]>([]);
+  
+  const pipesRef = useRef<Pipe[]>(Array.from({length: 4}, () => ({ x: 0, gapTop: 0, passed: false, moveType: 'none', baseY: 0, angle: 0, active: false })));
+  const floatingTextsRef = useRef<FloatingText[]>(Array.from({length: 3}, () => ({text: '', x: 0, y: 0, life: 0, color: '', active: false})));
+  const particlesRef = useRef<Array<{x: number, y: number, speed: number, size: number, type: 'star' | 'cloud'}>>([]);
+  
   const requestRef = useRef<number>(0);
   const scoreRef = useRef(0);
+  const dimsRef = useRef({ width: 400, height: 500, scale: 1, dpr: 1 });
   
-  const particlesRef = useRef<Array<{x: number, y: number, speed: number, size: number, type: 'star' | 'cloud'}>>([]);
+  const frameRef = useRef(0);
+
+  const bgCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const emojiCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gradientsRef = useRef<{ pipeGrad: CanvasGradient | null }>({ pipeGrad: null });
+  
+  const textCacheRef = useRef<Record<string, HTMLCanvasElement>>({});
+
   const [fakeAd, setFakeAd] = useState({ show: false, text: '' });
   const adTimeoutRef = useRef<any>(null);
-  const dimsRef = useRef({ width: 400, height: 500, scale: 1 });
-
-  // THÊM: STATE CHO GOD MODE (HACKER)
   const [isGodModeUI, setIsGodModeUI] = useState(false);
   const isGodModeRef = useRef(false);
-
   const gameStateRef = useRef<GameState>(gameState);
-  const emojiRef = useRef(selectedEmoji);
 
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
-  useEffect(() => { emojiRef.current = selectedEmoji; }, [selectedEmoji]);
+
+  const getCachedText = useCallback((text: string, color: string) => {
+    const key = text + color;
+    if (textCacheRef.current[key]) return textCacheRef.current[key];
+    
+    const cvs = document.createElement('canvas');
+    cvs.width = 400; cvs.height = 100;
+    const ctx = cvs.getContext('2d', { willReadFrequently: false });
+    if (ctx) {
+      ctx.font = '900 36px "Comic Sans MS", cursive';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 6;
+      ctx.strokeText(text, 200, 50);
+      ctx.fillStyle = color;
+      ctx.fillText(text, 200, 50);
+    }
+    textCacheRef.current[key] = cvs;
+    return cvs;
+  }, []);
+
+  useEffect(() => {
+    let cvs = emojiCanvasRef.current;
+    if (!cvs) { cvs = document.createElement('canvas'); emojiCanvasRef.current = cvs; }
+    cvs.width = 128; cvs.height = 128;
+    const ctx = cvs.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, 128, 128);
+      ctx.font = '100px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(selectedEmoji, 64, 64);
+    }
+  }, [selectedEmoji]);
 
   useEffect(() => {
     const particles: any[] = [];
     for (let i = 0; i < 30; i++) {
-      const type = Math.random() > 0.6 ? 'cloud' : 'star';
       particles.push({
         x: Math.random() * GAME_CONFIG.LOGICAL_WIDTH,
         y: Math.random() * GAME_CONFIG.LOGICAL_HEIGHT,
         speed: Math.random() * 0.5 + 0.2, 
         size: Math.random() * 3 + 1,
-        type: type
+        type: Math.random() > 0.6 ? 'cloud' : 'star'
       });
     }
     particlesRef.current = particles;
@@ -389,14 +442,51 @@ const useGameEngine = ({
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !canvas.parentElement) return;
+    
     const parent = canvas.parentElement;
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = parent.clientWidth * dpr;
-    canvas.height = parent.clientHeight * dpr;
+    const cw = parent.clientWidth * dpr;
+    const ch = parent.clientHeight * dpr;
+    canvas.width = cw; canvas.height = ch;
+    
     const logicalHeight = 500;
     const scale = parent.clientHeight / logicalHeight;
     const logicalWidth = parent.clientWidth / scale;
-    dimsRef.current = { width: logicalWidth, height: logicalHeight, scale };
+    
+    dimsRef.current = { width: logicalWidth, height: logicalHeight, scale, dpr };
+
+    let bgCvs = bgCanvasRef.current;
+    if (!bgCvs) { bgCvs = document.createElement('canvas'); bgCanvasRef.current = bgCvs; }
+    bgCvs.width = cw; bgCvs.height = ch;
+    
+    const bgCtx = bgCvs.getContext('2d', { alpha: false });
+    if (bgCtx) {
+      bgCtx.scale(dpr * scale, dpr * scale);
+      
+      const bgGrad = bgCtx.createLinearGradient(0, 0, 0, logicalHeight);
+      bgGrad.addColorStop(0, '#1a0b2e'); bgGrad.addColorStop(0.5, '#4b1d52'); bgGrad.addColorStop(1, '#ff6b6b');
+      bgCtx.fillStyle = bgGrad;
+      bgCtx.fillRect(0, 0, logicalWidth, logicalHeight);
+
+      bgCtx.beginPath();
+      bgCtx.arc(logicalWidth / 2, logicalHeight * 0.65, 135, 0, TWO_PI);
+      bgCtx.fillStyle = 'rgba(255, 0, 128, 0.3)';
+      bgCtx.fill();
+
+      const sunGrad = bgCtx.createLinearGradient(0, logicalHeight * 0.65 - 120, 0, logicalHeight * 0.65);
+      sunGrad.addColorStop(0, '#ffdf00'); sunGrad.addColorStop(1, '#ff0080');
+      bgCtx.beginPath();
+      bgCtx.arc(logicalWidth / 2, logicalHeight * 0.65, 120, 0, TWO_PI);
+      bgCtx.fillStyle = sunGrad;
+      bgCtx.fill();
+    }
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (ctx) {
+       const pipeGrad = ctx.createLinearGradient(0, 0, GAME_CONFIG.PIPE_WIDTH, 0);
+       pipeGrad.addColorStop(0, '#ff00cc'); pipeGrad.addColorStop(1, '#00ffff');
+       gradientsRef.current = { pipeGrad };
+    }
   }, [canvasRef]);
 
   useEffect(() => {
@@ -413,59 +503,61 @@ const useGameEngine = ({
     }
   }, [triggerShake]);
 
-  // HÀM XỬ LÝ CỘNG ĐIỂM DÙNG CHUNG (Tối ưu để ko bị Crash khi Hack)
   const handleScoreIncrease = useCallback((amount: number = 1, isHack: boolean = false) => {
     scoreRef.current += amount;
     setScore(scoreRef.current);
-    
-    // Yêu cầu Audio phát bài nhạc tương ứng với cột mốc
     audio.playMusicForScore(scoreRef.current);
 
-    // Không hiển thị Fake Ads nếu đang dùng phím Hack nhảy điểm để tránh lag
-    if (!isHack) {
-      if (scoreRef.current >= 3 && Math.random() < 0.25) {
-        setFakeAd({ show: true, text: FAKE_ADS[Math.floor(Math.random() * FAKE_ADS.length)] });
-        if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
-        adTimeoutRef.current = setTimeout(() => { setFakeAd({ show: false, text: '' }); }, 2000);
-      }
+    if (!isHack && scoreRef.current >= 3 && Math.random() < 0.25) {
+      setFakeAd({ show: true, text: FAKE_ADS[Math.floor(Math.random() * FAKE_ADS.length)] });
+      if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
+      adTimeoutRef.current = setTimeout(() => { setFakeAd({ show: false, text: '' }); }, 2000);
     }
 
     let popupText = MEME_POPUPS[Math.floor(Math.random() * MEME_POPUPS.length)];
-    if (scoreRef.current >= 20 && scoreRef.current < 40) popupText = "BÉO PHÌ! 🍔";
-    if (scoreRef.current >= 40) popupText = "ĐỘNG KINH! ⚡";
+    if (scoreRef.current >= 20 && scoreRef.current < 30) popupText = "Mups! 🍔";
+    if (scoreRef.current >= 30) popupText = "Tày! ⚡";
     if (isHack) popupText = `🚀 TỚI MỐC ${scoreRef.current}!`;
 
-    // GIẢI QUYẾT CRASH: Giới hạn tối đa 2 text hiển thị cùng lúc để Canvas không bị quá tải
-    if (floatingTextsRef.current.length >= 2) {
-      floatingTextsRef.current.shift();
+    const textColor = isHack ? '#00ff00' : `hsl(${Math.floor(Math.random() * 360)}, 100%, 65%)`;
+    getCachedText(popupText, textColor);
+
+    const texts = floatingTextsRef.current;
+    let assigned = false;
+    let oldestIdx = 0, minLife = 999;
+    
+    for (let i = 0; i < texts.length; i++) {
+      if (!texts[i].active) {
+        texts[i] = { text: popupText, x: dimsRef.current.width / 2, y: dimsRef.current.height / 2, life: 1.2, color: textColor, active: true };
+        assigned = true; break;
+      }
+      if (texts[i].life < minLife) { minLife = texts[i].life; oldestIdx = i; }
     }
+    if (!assigned) {
+      texts[oldestIdx] = { text: popupText, x: dimsRef.current.width / 2, y: dimsRef.current.height / 2, life: 1.2, color: textColor, active: true };
+    }
+  }, [setScore, getCachedText]);
 
-    floatingTextsRef.current.push({
-      text: popupText,
-      x: dimsRef.current.width / 2, y: dimsRef.current.height / 2, 
-      life: 1.2, 
-      color: isHack ? '#00ff00' : `hsl(${Math.random() * 360}, 100%, 65%)`
-    });
-  }, [setScore]);
-
-  // HÀM TOGGLE GOD MODE KHI BẤM ĐÚNG MÃ KONAMI
   const toggleGodMode = useCallback(() => {
     isGodModeRef.current = !isGodModeRef.current;
     setIsGodModeUI(isGodModeRef.current);
     
-    floatingTextsRef.current.push({
-      text: isGodModeRef.current ? "HACKER MAN! (Phím S: +10 điểm)" : "TẮT HACK",
-      x: dimsRef.current.width / 2, y: dimsRef.current.height / 3,
-      life: 2.0, color: isGodModeRef.current ? '#00ff00' : '#ff0000'
-    });
-  }, []);
+    const textMsg = isGodModeRef.current ? "HACKER MAN! (+10)" : "TẮT HACK";
+    const color = isGodModeRef.current ? '#00ff00' : '#ff0000';
+    getCachedText(textMsg, color);
 
-  // HÀM HACK CỘNG ĐIỂM (BẤM S): Dịch chuyển lên mốc 10 điểm tiếp theo
+    const texts = floatingTextsRef.current;
+    texts[0] = {
+      text: textMsg,
+      x: dimsRef.current.width / 2, y: dimsRef.current.height / 3,
+      life: 2.0, color: color, active: true
+    };
+  }, [getCachedText]);
+
   const addScoreHack = useCallback(() => {
     if (isGodModeRef.current && gameStateRef.current === 'PLAYING') {
       const nextMilestone = Math.floor(scoreRef.current / 10) * 10 + 10;
-      const diff = nextMilestone - scoreRef.current;
-      handleScoreIncrease(diff, true);
+      handleScoreIncrease(nextMilestone - scoreRef.current, true);
     }
   }, [handleScoreIncrease]);
 
@@ -491,8 +583,19 @@ const useGameEngine = ({
     setFakeAd({ show: false, text: '' });
     if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
     birdRef.current = { y: dims.height / 2, velocity: 0, rotation: 0 };
-    pipesRef.current = [{ x: dims.width, gapTop: 100, passed: false, moveType: 'none', baseY: 100, angle: 0 }];
-    floatingTextsRef.current = [];
+    frameRef.current = 0; 
+    
+    pipesRef.current.forEach((p, i) => {
+      p.active = i === 0;
+      p.x = dims.width;
+      p.gapTop = 100;
+      p.passed = false;
+      p.moveType = 'none';
+      p.baseY = 100;
+      p.angle = 0;
+    });
+    floatingTextsRef.current.forEach(t => t.active = false);
+    
     scoreRef.current = 0;
     setScore(0);
     setGameState('PLAYING');
@@ -500,53 +603,40 @@ const useGameEngine = ({
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
 
     const dims = dimsRef.current;
-    const dpr = window.devicePixelRatio || 1;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frameRef.current += 1; 
+    const time = frameRef.current;
+    
     ctx.save();
-    ctx.scale(dpr * dims.scale, dpr * dims.scale); 
+    
+    ctx.setTransform(1, 0, 0, 1, 0, 0); 
+    if (bgCanvasRef.current) ctx.drawImage(bgCanvasRef.current, 0, 0);
+    
+    ctx.scale(dims.dpr * dims.scale, dims.dpr * dims.scale); 
 
-    const time = Date.now() / 5;
     const isRGB = scoreRef.current >= 10;
-    const TWO_PI = Math.PI * 2;
-
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, dims.height);
-    bgGrad.addColorStop(0, '#1a0b2e');
-    bgGrad.addColorStop(0.5, '#4b1d52');
-    bgGrad.addColorStop(1, '#ff6b6b');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0, 0, dims.width, dims.height);
-
-    ctx.beginPath();
-    ctx.arc(dims.width / 2, dims.height * 0.65, 135, 0, TWO_PI, true);
-    ctx.fillStyle = 'rgba(255, 0, 128, 0.3)';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.arc(dims.width / 2, dims.height * 0.65, 120, 0, TWO_PI, true);
-    const sunGrad = ctx.createLinearGradient(0, dims.height * 0.65 - 120, 0, dims.height * 0.65);
-    sunGrad.addColorStop(0, '#ffdf00');
-    sunGrad.addColorStop(1, '#ff0080');
-    ctx.fillStyle = sunGrad;
-    ctx.fill();
+    const { pipeGrad } = gradientsRef.current;
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
     ctx.beginPath();
-    particlesRef.current.forEach(p => {
+    const particles = particlesRef.current;
+    const pLen = particles.length;
+    for (let i = 0; i < pLen; i++) {
+      const p = particles[i];
       if (p.type === 'star') {
         ctx.moveTo(p.x, p.y);
         ctx.arc(p.x, p.y, p.size, 0, TWO_PI);
       }
-    });
+    }
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255, 192, 203, 0.2)';
     ctx.beginPath();
-    particlesRef.current.forEach(p => {
+    for (let i = 0; i < pLen; i++) {
+      const p = particles[i];
       if (p.type === 'cloud') {
         ctx.moveTo(p.x, p.y);
         ctx.arc(p.x, p.y, p.size * 5, 0, TWO_PI);
@@ -555,88 +645,91 @@ const useGameEngine = ({
         ctx.moveTo(p.x + p.size*6, p.y);
         ctx.arc(p.x + p.size*6, p.y, p.size * 4, 0, TWO_PI);
       }
-    });
+    }
     ctx.fill();
 
     ctx.strokeStyle = isRGB ? `hsla(${time % 360}, 100%, 70%, 0.15)` : 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    const offsetX = (Date.now() / 20) % 40; 
+    const offsetX = (time / 2) % 40; 
     const gridStartY = dims.height * 0.65; 
     ctx.beginPath();
     for (let i = -40; i < dims.width; i += 40) { ctx.moveTo(i - offsetX, gridStartY); ctx.lineTo(i - offsetX, dims.height); }
     for (let i = gridStartY; i < dims.height; i += 20) { ctx.moveTo(0, i); ctx.lineTo(dims.width, i); }
     ctx.stroke();
 
-    const pipeGrad = ctx.createLinearGradient(0, 0, GAME_CONFIG.PIPE_WIDTH, 0);
-    pipeGrad.addColorStop(0, '#ff00cc');
-    pipeGrad.addColorStop(1, '#00ffff');
+    let currentFill: string | CanvasGradient;
+    let currentStrobe: string;
 
-    pipesRef.current.forEach(pipe => {
+    if (isRGB) {
+        currentFill = `hsl(${(time * 2 + 180) % 360}, 100%, 50%)`;
+        currentStrobe = `hsl(${(time * 2) % 360}, 100%, 60%)`;
+    } else {
+        currentFill = pipeGrad || '#ff00cc';
+        currentStrobe = Math.random() > 0.95 ? 'rgba(255,255,255,0.8)' : '#ff003c';
+    }
+
+    const pipes = pipesRef.current;
+    const pipesLen = pipes.length;
+    for (let i = 0; i < pipesLen; i++) {
+      const pipe = pipes[i];
+      if (!pipe.active) continue;
+
       ctx.save();
       ctx.translate(pipe.x, 0);
       
-      const strobe = !isRGB && Math.random() > 0.95 ? 'rgba(255,255,255,0.8)' : (isRGB ? `hsl(${time % 360}, 100%, 60%)` : '#ff003c');
-      
-      ctx.fillStyle = isRGB ? `hsl(${(time+180) % 360}, 100%, 50%)` : pipeGrad;
-      ctx.strokeStyle = strobe;
+      ctx.fillStyle = currentFill;
+      ctx.strokeStyle = currentStrobe;
       ctx.lineWidth = 4;
+      
       ctx.fillRect(0, 0, GAME_CONFIG.PIPE_WIDTH, pipe.gapTop);
       ctx.strokeRect(0, 0, GAME_CONFIG.PIPE_WIDTH, pipe.gapTop);
-      
-      ctx.fillStyle = strobe;
+      ctx.fillStyle = currentStrobe;
       ctx.fillRect(-6, pipe.gapTop - 25, GAME_CONFIG.PIPE_WIDTH + 12, 25);
 
       const bottomY = pipe.gapTop + GAME_CONFIG.PIPE_GAP;
-      ctx.fillStyle = isRGB ? `hsl(${(time+180) % 360}, 100%, 50%)` : pipeGrad;
+      ctx.fillStyle = currentFill;
       ctx.fillRect(0, bottomY, GAME_CONFIG.PIPE_WIDTH, dims.height - bottomY);
       ctx.strokeRect(0, bottomY, GAME_CONFIG.PIPE_WIDTH, dims.height - bottomY);
-      
-      ctx.fillStyle = strobe;
+      ctx.fillStyle = currentStrobe;
       ctx.fillRect(-6, bottomY, GAME_CONFIG.PIPE_WIDTH + 12, 25);
+      
       ctx.restore();
-    });
+    }
 
-    floatingTextsRef.current.forEach(ft => {
+    const texts = floatingTextsRef.current;
+    const textsLen = texts.length;
+    for (let i = 0; i < textsLen; i++) {
+      const ft = texts[i];
+      if (!ft.active) continue;
+
       ctx.save();
       ctx.translate(ft.x, ft.y);
       const scaleVal = Math.max(0.1, 1 + (1.2 - ft.life) * 1.5); 
       ctx.scale(scaleVal, scaleVal);
       ctx.globalAlpha = Math.max(0, Math.min(1, ft.life));
-      ctx.font = '900 36px "Comic Sans MS", cursive';
-      ctx.textAlign = 'center';
       
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 6;
-      ctx.strokeText(ft.text, 0, 0);
-      ctx.fillStyle = ft.color;
-      ctx.fillText(ft.text, 0, 0);
+      const cachedImage = getCachedText(ft.text, ft.color);
+      ctx.drawImage(cachedImage, -200, -50);
+      
       ctx.restore();
-    });
+    }
 
     ctx.restore(); 
 
     const bird = birdRef.current;
     ctx.save();
-    const physicalX = GAME_CONFIG.BIRD_X * dims.scale * dpr;
-    const physicalY = bird.y * dims.scale * dpr;
-    
+    const physicalX = GAME_CONFIG.BIRD_X * dims.scale * dims.dpr;
+    const physicalY = bird.y * dims.scale * dims.dpr;
     const sizeMult = scoreRef.current >= 20 ? 1.5 : 1;
-    const physicalFontSize = GAME_CONFIG.BIRD_SIZE * dims.scale * dpr * sizeMult;
+    const physicalFontSize = GAME_CONFIG.BIRD_SIZE * dims.scale * dims.dpr * sizeMult;
 
     ctx.translate(physicalX, physicalY);
+    ctx.rotate(scoreRef.current >= 40 ? bird.rotation + (Math.random() - 0.5) * 0.5 : bird.rotation);
     
-    if(scoreRef.current >= 40) {
-       ctx.rotate(bird.rotation + (Math.random() - 0.5) * 0.5);
-    } else {
-       ctx.rotate(bird.rotation); 
+    if (emojiCanvasRef.current) {
+        ctx.drawImage(emojiCanvasRef.current, -physicalFontSize/2, -physicalFontSize/2, physicalFontSize, physicalFontSize);
     }
     
-    ctx.font = `${physicalFontSize}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(emojiRef.current, 0, 0);
-    
-    // Nếu có God Mode, vẽ vòng hào quang xanh lá bao quanh chim
     if (isGodModeRef.current) {
       ctx.beginPath();
       ctx.arc(0, 0, physicalFontSize * 0.7, 0, TWO_PI);
@@ -646,7 +739,7 @@ const useGameEngine = ({
     }
 
     ctx.restore();
-  }, [canvasRef]);
+  }, [canvasRef, getCachedText]);
 
   const update = useCallback(() => {
     if (gameStateRef.current !== 'PLAYING') return;
@@ -659,46 +752,59 @@ const useGameEngine = ({
     bird.y += bird.velocity;
     bird.rotation = Math.min(Math.PI / 2.5, Math.max(-Math.PI / 4, bird.velocity / 8));
 
-    particlesRef.current.forEach(p => {
+    const pLen = particlesRef.current.length;
+    for (let i = 0; i < pLen; i++) {
+      const p = particlesRef.current[i];
       p.x -= p.speed;
-      if (p.x < -100) {
-        p.x = dims.width + 50;
-        p.y = Math.random() * dims.height;
-      }
-    });
+      if (p.x < -100) { p.x = dims.width + 50; p.y = Math.random() * dims.height; }
+    }
 
     const sizeMult = scoreRef.current >= 20 ? 1.5 : 1;
     const actualBirdSize = BIRD_SIZE * sizeMult;
 
-    // XỬ LÝ CHẠM BIÊN MÀN HÌNH (SÀN / TRẦN NÀN)
     if (bird.y + actualBirdSize / 2 > dims.height || bird.y - actualBirdSize / 2 < 0) {
       if (!isGodModeRef.current) {
         handleGameOver();
         return;
       } else {
-        // Nảy lại nếu đang bật Bất tử (God Mode)
         if (bird.y + actualBirdSize / 2 > dims.height) { 
           bird.y = dims.height - actualBirdSize / 2; 
-          bird.velocity = -5; // Nảy lên
+          bird.velocity = -5; 
         }
         if (bird.y - actualBirdSize / 2 < 0) { 
           bird.y = actualBirdSize / 2; 
-          bird.velocity = 0; // Đụng trần
+          bird.velocity = 0; 
         }
       }
     }
 
-    floatingTextsRef.current.forEach(ft => { ft.life -= 0.02; ft.y -= 2; }); 
-    floatingTextsRef.current = floatingTextsRef.current.filter(ft => ft.life > 0);
+    const texts = floatingTextsRef.current;
+    for (let i = 0; i < texts.length; i++) {
+      if (texts[i].active) {
+        texts[i].life -= 0.02;
+        texts[i].y -= 2;
+        if (texts[i].life <= 0) texts[i].active = false;
+      }
+    }
 
-    pipesRef.current.forEach((pipe) => {
+    const pipes = pipesRef.current;
+    const pipesLen = pipes.length;
+    let maxActiveX = -Infinity;
+    let activeCount = 0;
+
+    for (let i = 0; i < pipesLen; i++) {
+      const pipe = pipes[i];
+      if (!pipe.active) continue;
+      
+      activeCount++;
+      if (pipe.x > maxActiveX) maxActiveX = pipe.x;
+
       pipe.x -= PIPE_SPEED;
       if (pipe.moveType === 'sine') {
         pipe.angle += 0.04;
         pipe.gapTop = pipe.baseY + Math.sin(pipe.angle) * 50;
       }
 
-      // XỬ LÝ ĐÂM VÀO ỐNG
       if (!isGodModeRef.current) {
         if (BIRD_X + actualBirdSize/3 > pipe.x && BIRD_X - actualBirdSize/3 < pipe.x + PIPE_WIDTH &&
            (bird.y - actualBirdSize/3 < pipe.gapTop || bird.y + actualBirdSize/3 > pipe.gapTop + PIPE_GAP)) {
@@ -710,19 +816,26 @@ const useGameEngine = ({
         pipe.passed = true;
         handleScoreIncrease(1, false);
       }
-    });
 
-    const lastPipe = pipesRef.current[pipesRef.current.length - 1];
-    if (lastPipe && lastPipe.x < dims.width - PIPE_SPACING) {
-      const gapTop = Math.random() * (dims.height - PIPE_GAP - 120) + 60;
-      pipesRef.current.push({
-        x: dims.width, gapTop, passed: false,
-        moveType: scoreRef.current >= 5 && Math.random() > 0.5 ? 'sine' : 'none',
-        baseY: gapTop, angle: 0
-      });
+      if (pipe.x < -PIPE_WIDTH) {
+        pipe.active = false;
+      }
     }
 
-    if (pipesRef.current[0] && pipesRef.current[0].x < -PIPE_WIDTH) pipesRef.current.shift();
+    if (activeCount > 0 && maxActiveX < dims.width - PIPE_SPACING) {
+      for (let i = 0; i < pipesLen; i++) {
+        if (!pipes[i].active) {
+          pipes[i].active = true;
+          pipes[i].x = dims.width;
+          pipes[i].gapTop = Math.random() * (dims.height - PIPE_GAP - 120) + 60;
+          pipes[i].baseY = pipes[i].gapTop;
+          pipes[i].passed = false;
+          pipes[i].moveType = scoreRef.current >= 5 && Math.random() > 0.5 ? 'sine' : 'none';
+          pipes[i].angle = 0;
+          break;
+        }
+      }
+    }
 
     draw();
     requestRef.current = requestAnimationFrame(update);
@@ -772,6 +885,7 @@ export default function App() {
 
   useEffect(() => {
     const initAudioOnInteraction = () => {
+      audio.unlock(); // Đánh thức phần cứng Audio
       if (gameState === 'START') audio.playMenuMusic();
       window.removeEventListener('click', initAudioOnInteraction);
       window.removeEventListener('touchstart', initAudioOnInteraction);
@@ -823,7 +937,7 @@ export default function App() {
         {gameState === 'GAMEOVER' && <GameOverScreen score={score} highScore={highScore} roastMsg={roastMsg} onRetry={resetGame} onMenu={() => { setGameState('START'); setScore(0); audio.playMenuMusic(); }} />}
 
         {isGodModeUI && gameState === 'PLAYING' && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 border border-green-500 text-green-500 font-mono text-sm px-4 py-2 font-bold z-30 animate-pulse flex items-center gap-2 rounded-lg">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/80 border border-green-500 text-green-500 font-mono text-sm px-4 py-2 font-bold z-30 animate-pulse flex items-center gap-2 rounded-lg pointer-events-none">
             <Terminal size={16} /> BẬT HACK - BẤM 'S' LÊN +10 ĐIỂM
           </div>
         )}
@@ -845,7 +959,7 @@ export default function App() {
 
         <canvas 
           ref={canvasRef} 
-          className="absolute inset-0 w-full h-full cursor-pointer touch-none z-10"
+          className="absolute inset-0 w-full h-full cursor-pointer touch-none z-10 block"
           onMouseDown={() => { if (gameState === 'PLAYING') jump(); else if (gameState === 'START') resetGame(); }}
           onTouchStart={(e) => { e.preventDefault(); if (gameState === 'PLAYING') jump(); else if (gameState === 'START') resetGame(); }}
         />
