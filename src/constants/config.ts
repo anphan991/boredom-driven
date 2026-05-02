@@ -23,4 +23,14 @@ export const ROASTS = [
   "Just quit and go raise cows instead 🐄"
 ];
 
-export const MEME_POPUPS = ["Skill gap 📈", "R U Sofm 💯", "That’s heat 🔥", "TÀY 🐧", "Hackerman 💻", "Drip maxed 🗿", "EZ Game 🥱"];
+export const MEME_POPUPS = ["Skill gap 📈", "R U Smurf 💯", "That’s heat 🔥", "TÀY 🐧", "Hackerman 💻", "Drip maxed 🗿", "EZ Game 🥱"];
+
+export const FAKE_ADS = [
+  "⚠️ Máy bạn đã nhiễm virus Flappy! Bấm để diệt 🦠",
+  "Lõi quá bro, nạp 50k để bỏ qua ống này? 💳",
+  "Nóng! 💋 Chị Google ở cách bạn 2km muốn làm quen!",
+  "💻 Win 10 Bản Quyền chỉ 99k! Mua ngay hôm nay!!!",
+  "Gia hạn thẻ VIP để mở khóa tàng hình 🐧",
+  "📱 Điện thoại bạn đang quá nhiệt! Nhúng nước ngay!",
+  "Hackerman detected 🤖 Sending IP to FBI..."
+];

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { GameState, Bird, Pipe, FloatingText } from '../types';
-import { GAME_CONFIG, ROASTS, MEME_POPUPS } from '../constants/config';
+import { GAME_CONFIG, ROASTS, MEME_POPUPS, FAKE_ADS } from '../constants/config';
 import { audio } from '../utils/audioManager';
 
 interface UseGameEngineProps {
@@ -23,7 +23,26 @@ export const useGameEngine = ({
   const requestRef = useRef<number>(0);
   const scoreRef = useRef(0);
   
-  // Lưu trữ kích thước động của màn hình
+  const particlesRef = useRef<Array<{x: number, y: number, speed: number, size: number}>>([]);
+  
+  // Hàm khởi tạo hạt (chạy 1 lần)
+  useEffect(() => {
+    const particles = [];
+    for (let i = 0; i < 50; i++) {
+      particles.push({
+        x: Math.random() * GAME_CONFIG.LOGICAL_WIDTH,
+        y: Math.random() * GAME_CONFIG.LOGICAL_HEIGHT,
+        speed: Math.random() * 0.5 + 0.1, // Tốc độ bay khác nhau tạo 3D
+        size: Math.random() * 2 + 0.5
+      });
+    }
+    particlesRef.current = particles;
+  }, []);
+
+  // TÍNH NĂNG TROLL: Quản lý trạng thái hiển thị Fake Pop-up
+  const [fakeAd, setFakeAd] = useState({ show: false, text: '' });
+  const adTimeoutRef = useRef<any>(null);
+  
   const dimsRef = useRef({ width: 400, height: 500, scale: 1 });
 
   const gameStateRef = useRef<GameState>(gameState);
@@ -32,7 +51,6 @@ export const useGameEngine = ({
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
   useEffect(() => { emojiRef.current = selectedEmoji; }, [selectedEmoji]);
 
-  // --- XỬ LÝ RESIZE MÀN HÌNH ---
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !canvas.parentElement) return;
@@ -55,7 +73,6 @@ export const useGameEngine = ({
     return () => window.removeEventListener('resize', resizeCanvas);
   }, [resizeCanvas]);
 
-  // Phát nhạc xổ số khi ở màn hình chờ (Start Screen)
   useEffect(() => {
     if (gameState === 'START') {
       audio.playMenuMusic();
@@ -65,10 +82,7 @@ export const useGameEngine = ({
   const jump = useCallback(() => {
     if (gameStateRef.current === 'PLAYING') {
       birdRef.current.velocity = GAME_CONFIG.JUMP_STRENGTH;
-      
-      // PHÁT TIẾNG NHẢY (Whoosh)
       audio.playJump(); 
-      
       setShake(true);
       setTimeout(() => setShake(false), 80);
     }
@@ -76,10 +90,12 @@ export const useGameEngine = ({
 
   const handleGameOver = useCallback(() => {
     setGameState('GAMEOVER');
-    
-    // DỪNG NHẠC CẦU VỒNG VÀ PHÁT TIẾNG THUA (do-ngu-do-an-hai.mp3)
     audio.stopSequence(); 
     audio.playCrash(); 
+
+    // Dọn dẹp Fake Ad khi chết
+    setFakeAd({ show: false, text: '' });
+    if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
 
     setRoastMsg(ROASTS[Math.floor(Math.random() * ROASTS.length)]);
     setHighScore(prev => {
@@ -93,9 +109,12 @@ export const useGameEngine = ({
   const resetGame = useCallback(() => {
     const dims = dimsRef.current;
     
-    // DỪNG NHẠC XỔ SỐ KHI BẮT ĐẦU CHƠI
     audio.stopMenuMusic();
     audio.stopSequence();
+
+    // Dọn dẹp Fake Ad khi chơi lại
+    setFakeAd({ show: false, text: '' });
+    if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
 
     birdRef.current = { y: dims.height / 2, velocity: 0, rotation: 0 };
     pipesRef.current = [{ 
@@ -123,25 +142,65 @@ export const useGameEngine = ({
     const time = Date.now() / 5;
     const isRGB = scoreRef.current >= 10;
 
-    ctx.strokeStyle = isRGB ? `hsla(${time % 360}, 100%, 50%, 0.1)` : 'rgba(239, 68, 68, 0.05)';
-    for (let i = 0; i < dims.width; i += 40) {
-      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, dims.height); ctx.stroke();
+    // 1. VẼ HẠT BACKGROUND (CYBER PARTICLES)
+    ctx.fillStyle = isRGB ? `hsla(${time % 360}, 100%, 70%, 0.5)` : 'rgba(0, 255, 255, 0.3)'; // Màu Cyan mờ
+    particlesRef.current.forEach(p => {
+      p.x -= p.speed; // Hạt trôi sang trái
+      if (p.x < 0) {  // Nếu khuất màn hình thì vòng lại bên phải
+        p.x = dimsRef.current.width;
+        p.y = Math.random() * dimsRef.current.height;
+      }
+    });
+
+    // 2. VẼ LƯỚI CUỘN DI ĐỘNG (SCROLLING GRID)
+    ctx.strokeStyle = isRGB ? `hsla(${time % 360}, 100%, 50%, 0.1)` : 'rgba(239, 68, 68, 0.08)';
+    ctx.lineWidth = 1;
+    // Offset tạo hiệu ứng lưới trôi ngược lại với tốc độ chim bay
+    const offsetX = (Date.now() / 20) % 40; 
+    
+    // Cột dọc trôi liên tục
+    for (let i = -40; i < dims.width; i += 40) {
+      ctx.beginPath(); ctx.moveTo(i - offsetX, 0); ctx.lineTo(i - offsetX, dims.height); ctx.stroke();
     }
+    // Hàng ngang đứng im
     for (let i = 0; i < dims.height; i += 40) {
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(dims.width, i); ctx.stroke();
     }
 
+    // 3. VẼ ỐNG VỚI HIỆU ỨNG NEON GLOW CHÁY MÁY
     pipesRef.current.forEach(pipe => {
-      ctx.fillStyle = isRGB ? `hsla(${time % 360}, 100%, 50%, 0.15)` : 'rgba(239, 68, 68, 0.15)';
-      ctx.strokeStyle = isRGB ? `hsla(${time % 360}, 100%, 50%, 0.6)` : 'rgba(239, 68, 68, 0.6)';
+      let alpha = 1;
+      if (scoreRef.current >= 30) {
+        const distToPipe = pipe.x - GAME_CONFIG.BIRD_X;
+        if (distToPipe < 150 && pipe.x + GAME_CONFIG.PIPE_WIDTH > GAME_CONFIG.BIRD_X - 50) {
+          alpha = 0; 
+        }
+      }
+      ctx.globalAlpha = alpha;
+
+      // Cài đặt Neon Glow
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = isRGB ? `hsl(${time % 360}, 100%, 50%)` : 'rgba(239, 68, 68, 0.8)';
+      
+      ctx.fillStyle = isRGB ? `hsla(${time % 360}, 100%, 5%, 0.8)` : 'rgba(20, 5, 5, 0.8)'; // Lõi ống tối màu
+      ctx.strokeStyle = isRGB ? `hsla(${time % 360}, 100%, 60%, 1)` : 'rgba(255, 50, 50, 1)'; // Viền ống sáng chói
       ctx.lineWidth = 2;
+
+      // Vẽ ống trên
       ctx.fillRect(pipe.x, 0, GAME_CONFIG.PIPE_WIDTH, pipe.gapTop);
       ctx.strokeRect(pipe.x, -2, GAME_CONFIG.PIPE_WIDTH, pipe.gapTop + 2);
+      
+      // Vẽ ống dưới
       const bottomY = pipe.gapTop + GAME_CONFIG.PIPE_GAP;
       ctx.fillRect(pipe.x, bottomY, GAME_CONFIG.PIPE_WIDTH, dims.height - bottomY);
       ctx.strokeRect(pipe.x, bottomY, GAME_CONFIG.PIPE_WIDTH, dims.height - bottomY + 2);
+      
+      // Tắt Glow để không ảnh hưởng các vật thể khác
+      ctx.shadowBlur = 0; 
+      ctx.globalAlpha = 1; 
     });
 
+    // 4. VẼ TEXT BAY LÊN (CŨNG CÓ NEON)
     floatingTextsRef.current.forEach(ft => {
       ctx.save();
       ctx.translate(ft.x, ft.y);
@@ -150,13 +209,18 @@ export const useGameEngine = ({
       ctx.globalAlpha = Math.max(0, Math.min(1, ft.life));
       ctx.font = '900 32px sans-serif';
       ctx.textAlign = 'center';
+      
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = ft.color;
       ctx.fillStyle = ft.color;
+      
       ctx.fillText(ft.text, 0, 0);
       ctx.restore();
     });
 
     ctx.restore(); 
 
+    // 5. VẼ AVATAR
     const bird = birdRef.current;
     ctx.save();
     const physicalX = GAME_CONFIG.BIRD_X * dims.scale * dpr;
@@ -168,6 +232,11 @@ export const useGameEngine = ({
     ctx.font = `${physicalFontSize}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    
+    // Thêm tí viền mờ cho Avatar nổi lên
+    ctx.shadowBlur = 20 * dims.scale;
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
+    
     ctx.fillText(emojiRef.current, 0, 0);
     ctx.restore();
   }, [canvasRef]);
@@ -208,11 +277,23 @@ export const useGameEngine = ({
         scoreRef.current += 1;
         setScore(scoreRef.current);
         
-        // KIỂM TRA MỐC 10 ĐIỂM ĐỂ BẮT ĐẦU CHUỖI NHẠC CẦU VỒNG
         if (scoreRef.current === 10) {
           audio.startRainbowSequence();
         } else if (scoreRef.current < 10) {
-          audio.playScoreSound(); // Tiếng Fahhh random
+          audio.playScoreSound();
+        }
+
+        // TÍNH NĂNG TROLL: Bật Fake Ad (25% tỷ lệ xuất hiện từ điểm số 3)
+        if (scoreRef.current >= 3 && Math.random() < 0.25) {
+          setFakeAd({ 
+            show: true, 
+            text: FAKE_ADS[Math.floor(Math.random() * FAKE_ADS.length)] 
+          });
+          
+          if (adTimeoutRef.current) clearTimeout(adTimeoutRef.current);
+          adTimeoutRef.current = setTimeout(() => {
+            setFakeAd({ show: false, text: '' });
+          }, 1800);
         }
 
         floatingTextsRef.current = [{
@@ -246,5 +327,6 @@ export const useGameEngine = ({
     return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
   }, [gameState, update]);
 
-  return { jump, resetGame };
+  // Nhớ export thêm biến fakeAd để bên App.tsx vẽ
+  return { jump, resetGame, fakeAd };
 };
