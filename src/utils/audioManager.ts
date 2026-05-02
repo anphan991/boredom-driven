@@ -39,7 +39,20 @@ class AudioManager {
       new Audio('/sounds/trinh-la-gi.mp3'),
       new Audio('/sounds/tap-trung-vao-su-nghiep.mp3'),
       new Audio('/sounds/hachimi-chimici-mambo.mp3'),
-      new Audio('/sounds/outro-song_oqu8zAg.mp3')
+      new Audio('/sounds/outro-song_oqu8zAg.mp3'),
+      new Audio('/sounds/tam-trang.mp3'),
+      new Audio('/sounds/loi-toi_TnbhdTR.mp3'),
+      new Audio('/sounds/banh-bao-banh-bao-day.mp3'),
+      new Audio('/sounds/Am_thanh_meme_con_may_thich_kieu_gi_may_nhay_vao_may_an_tao_di_tiktok-www_tiengdong_com.mp3'),
+      new Audio('/sounds/low-cortisol-song.mp3'),
+      new Audio('/sounds/dreamcore.mp3'),
+      new Audio('/sounds/tu-tu-tu-du-max-verstappen.mp3'),
+      new Audio('/sounds/Johnny-Dak.mp3'),
+      new Audio('/sounds/Anh-yeu-em-nhieu-VL.mp3'),
+      new Audio('/sounds/Anh-em-bi-chem.-Tao-bo-chay.mp3'),
+      new Audio('/sounds/outro-song_oqu8zAg.mp3'),
+      new Audio('/sounds/Day-no-phai-the-chu-li-thang-nay-kha-va-gioi.mp3'),
+      new Audio('/sounds/Vu-nao-Banh-ma.mp3')
     ];
     this.rainbowPlaylist.forEach(snd => snd.volume = 0.7);
   }
