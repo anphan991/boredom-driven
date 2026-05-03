@@ -1,77 +1,64 @@
-<<<<<<< HEAD
-# React + TypeScript + Vite
+# 🐦 FlappyCLone: Skill Issue Simulator
+### *From a tiny blog widget to a world-class RAM assassin.*
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> "This project was born in the dark void where my social life used to be. It started as a humble mini-game widget on my blog, but lately, I’ve had way too much free time and zero human interaction. So, I decided to 'evolve' it. Why play in a browser when you can force your CPU to scream for mercy?"
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🤡 The "I Have No Life" Stack
+*I used the most powerful tools available to build something completely unnecessary.*
 
-## React Compiler
+| Technology | The "Professional" Reason | The Harsh Reality |
+| :--- | :--- | :--- |
+| **React 19** | High-performance UI state | Moving a pixelated bird. Peak efficiency. |
+| **Vite 8** | Modern build toolchain | Builds faster than I ghost responsibilities. |
+| **Electron 41** | Cross-platform desktop shell | A Chrome tab in a trench coat eating your RAM. |
+| **TypeScript** | Strict type-safety | Ensuring bugs are documented with precision. |
+| **Tailwind** | Utility-first CSS | More classes than a university for one pipe. |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 💀 For the "Victims" (Players)
+*If you have a death wish for your PC and your mental health:*
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### **1. Acquisition**
+📥 **[Download FlappyClone Setup 1.0.0.exe](#)**
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### **2. The Blue Box of Shame**
+> **⚠️ Windows Defender Warning:** 
+> It will scream "VIRUS!". It’s not. It’s just Microsoft being jealous that I code for free while they charge $99 for a dev license. 
+> **Fix:** Click `More Info` -> `Run Anyway`.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### **3. The Loop**
+*   **Space:** To flap (and struggle).
+*   **ESC:** To accept defeat and face the reality of your life.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+---
+
+## ⌨️ For the "Enablers" (Devs)
+*Want to see the spaghetti code that holds my sanity together?*
+
+**Step 1: Kidnap the code**
+```bash
+git clone https://github.com/anphan991/cyberfly-game.git
+cd cyberfly-game
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+**Step 2: Feed the RAM monster**
+```bash
+npm install
 ```
-=======
-# boredom-driven
->>>>>>> 97afba76078d3d44298db781ca19251e5c5452fc
+
+**Step 3: Witness the chaos & package the disappointment**
+```bash
+npm run dev          # Start the madness
+npm run build:win    # Export the pain as an .exe
+```
+
+---
+
+## 🤝 Support My Delusion
+If you find a bug, it’s actually a **"personalized difficulty setting."** 
+But feel free to open a **Pull Request** if you need an excuse to avoid your own chores. I really need the human interaction. Please (don't do that)🐧.
+---
+Powered by 99% caffeine and 1% hope.*
