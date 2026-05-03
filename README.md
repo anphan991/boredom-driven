@@ -22,7 +22,7 @@
 *If you have a death wish for your PC and your mental health:*
 
 ### **1. Acquisition**
-📥 **[Download FlappyClone Setup 1.0.0.exe](#)**
+📥 **[Download FlappyClone Setup 1.0.0.exe](https://github.com/anphan991/boredom-driven/releases/tag/v1.0.0)**
 
 ### **2. The Blue Box of Shame**
 > **⚠️ Windows Defender Warning:** 
@@ -40,8 +40,8 @@
 
 **Step 1: Kidnap the code**
 ```bash
-git clone https://github.com/anphan991/cyberfly-game.git
-cd cyberfly-game
+git clone https://github.com/anphan991/boredom-driven.git
+cd boredom-driven
 ```
 
 **Step 2: Feed the RAM monster**
