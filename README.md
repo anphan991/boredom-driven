@@ -1,5 +1,5 @@
 # 🐦 FlappyCLone: Skill Issue Simulator
-### *From a tiny blog widget to a world-class RAM assassin.*
+### *A blog widget that evolved into a full-blown skill issue because my social calendar was a blank page.""*
 
 > "This project was born in the dark void where my social life used to be. It started as a humble mini-game widget on my blog, but lately, I’ve had way too much free time and zero human interaction. So, I decided to 'evolve' it. Why play in a browser when you can force your CPU to scream for mercy?"
 
