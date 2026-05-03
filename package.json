@@ -39,7 +39,7 @@
   },
   "build": {
     "appId": "com.anphan991.cyberlo",
-    "productName": "Cyber Flappy Lỏ",
+    "productName": "FlappyClone",
     "asar": false, 
     "directories": {
       "output": "release"
@@ -49,11 +49,14 @@
       "electron.cjs"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/favicon.ico",
+      "uninstallerIcon": "build/favicon.ico"
     }
-  }
+  } 
 }

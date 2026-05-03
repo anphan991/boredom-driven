@@ -54,7 +54,7 @@ export const ROASTS = [
   "Skill issue. Đập máy đi 🤡", "Chơi bằng ngón chân à? 👣", "Mù mắt quá, xóa game dùm 😭",
   "Thế cũng chết được, ảo thật đấy 💀", "Nghỉ game đi, tốn điện 🔌", "Trình này đòi hack NASA? 💻",
   "Hết cứu... 🚑", "Bà hàng xóm còn chơi giỏi hơn m! 👵", "Nhìn m chơi t đau mắt quá 🫣",
-  "10 điểm môn Thể dục 🏃‍♂️", "Mới mua acc à bro? 💳", "Bảo gà lại tự ái 🐔"
+  "Mới mua acc à bro? 💳", "Bảo gà lại tự ái 🐔"
 ];
 
 export const MEME_POPUPS = [
